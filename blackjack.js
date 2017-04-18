@@ -124,6 +124,12 @@ function loadCard(group, currentCardIndex) {
   let secondTween = game.add.tween(group.children[currentCardIndex].scale)
     .to( { x: gameOptions[group.groupName].scale, y: gameOptions[group.groupName].scale },
       300, Phaser.Easing.Linear.None, true);
+  // if the loaded card is from the players cads - attach a function removeCard to be called when clicked
+  if (group == playerCards) {
+    group.children[currentCardIndex].inputEnabled = true;
+    group.children[currentCardIndex].input.useHandCursor = true;
+    group.children[currentCardIndex].events.onInputDown.add(removeCard, this);
+  }
   // we have finished with the current card so we increment the index
   currentCardIndex++;
 
@@ -145,20 +151,33 @@ function loadCard(group, currentCardIndex) {
   secondTween.onComplete.add(function () { drawAndMoveCard(group, currentCardIndex) }, this);
 }
 
+// Remove card with animation
+function removeCard(card) {
+  if (buttonAllowed || cardsAPI.isEmpty())
+  {
+    let tween = game.add.tween(card).to({ x : -300 }, 250, Phaser.Easing.Linear.None, true);
+    tween.onComplete.add(function () { playerCards.remove(card); card.destroy(); }, this);
+  }
+}
+
 // Removes the 2 player cards by moving them out of the scene with tween
 // After that calls drawAndMoveCard function again
 function actionOnClick ()
 {
   if (buttonAllowed) {
+    // If both player cards were removed by clicking on them draw new cards
+    if (playerCards.total == 0) {
+      drawAndMoveCard(playerCards, 0);
+      buttonAllowed = false;
+      return;
+    }
     for (let childIndex = playerCards.total - 1; childIndex >= 0; childIndex--) {
       let card = playerCards.children[childIndex];
       let tween = game.add.tween(card).to({ x : -300 }, 250, Phaser.Easing.Linear.None, true);
       tween.onComplete.add(function () { playerCards.remove(card); card.destroy(); }, this);
-      if (childIndex == 0)
-      {
-        tween.onComplete.add(function () { drawAndMoveCard(playerCards, 0); }, this);
-      }
     }
+    // Draw a new card after 300 milliseconds (shortly after moving the cards out of the scene)
+    game.time.events.add(300, () => { drawAndMoveCard(playerCards, 0); }, this);
     buttonAllowed = false;
   }
 }
